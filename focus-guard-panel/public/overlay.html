@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Focus Guard</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap');
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100vw; height: 100vh; overflow: hidden;
+      background: #0d0d0f;
+      color: #e8e8ec;
+      font-family: 'Inter', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 4rem;
+      user-select: none;
+      cursor: default;
+    }
+    .logo {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: #00e5c8;
+      margin-bottom: 3rem;
+      opacity: 0.6;
+    }
+    .phrase {
+      max-width: 680px;
+      text-align: center;
+      font-size: 1.35rem;
+      line-height: 1.75;
+      color: #d0d0d8;
+      margin-bottom: 4rem;
+      font-weight: 400;
+    }
+    .timer-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .timer {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 3.5rem;
+      font-weight: 600;
+      color: #00e5c8;
+      line-height: 1;
+    }
+    .timer-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.6rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #444;
+      margin-top: 0.25rem;
+    }
+    .bar {
+      width: 220px;
+      height: 2px;
+      background: #1c1c22;
+      border-radius: 1px;
+      overflow: hidden;
+      margin-top: 0.75rem;
+    }
+    .bar-fill {
+      height: 100%;
+      background: #00e5c8;
+      border-radius: 1px;
+      transition: width 1s linear;
+    }
+  </style>
+</head>
+<body>
+  <div class="logo">focus guard · pausa activa</div>
+  <div class="phrase" id="phrase">…</div>
+  <div class="timer-wrap">
+    <div class="timer" id="timer">--</div>
+    <div class="timer-label">segundos para continuar</div>
+    <div class="bar"><div class="bar-fill" id="bar" style="width:100%"></div></div>
+  </div>
+
+  <script>
+    let total = 40, remaining = 40, iv = null;
+
+    async function init() {
+      try {
+        const r = await fetch('http://localhost:37291/api/overlay');
+        const d = await r.json();
+        document.getElementById('phrase').textContent = d.phrase || 'Tómate un momento.';
+        total = d.duration || 40;
+        remaining = total;
+      } catch {
+        document.getElementById('phrase').textContent = 'Tómate un momento antes de continuar.';
+        total = 40; remaining = 40;
+      }
+      render();
+      iv = setInterval(() => { remaining--; render(); if (remaining <= 0) { clearInterval(iv); closeOverlay(); } }, 1000);
+    }
+
+    function render() {
+      document.getElementById('timer').textContent = String(remaining).padStart(2, '0');
+      document.getElementById('bar').style.width = (remaining / total * 100) + '%';
+    }
+
+    async function closeOverlay() {
+      try {
+        await fetch('http://localhost:37291/api/overlay/close', { method: 'POST' });
+      } catch {}
+      // Fallback: intentar cerrar via tauri
+      if (window.__TAURI__) {
+        window.__TAURI__.window.getCurrentWindow().close();
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
